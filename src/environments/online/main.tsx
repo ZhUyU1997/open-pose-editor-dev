@@ -8,7 +8,7 @@ import NiceModal from '@ebay/nice-modal-react'
 import App from './App'
 
 
-console.log("Hello TEST")
+console.log("Hello TEST2")
 export function Main() {
     ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         <React.StrictMode>
