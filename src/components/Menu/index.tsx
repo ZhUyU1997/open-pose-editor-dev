@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import * as Menubar from '@radix-ui/react-menubar'
 import { CheckIcon, DotFilledIcon } from '@radix-ui/react-icons'
 
@@ -11,6 +11,8 @@ import { getCurrentTime } from '../../utils/time'
 import useForceUpdate from '../../hooks/useFoceUpdate'
 import classNames from 'classnames'
 import { useLanguageSelect } from '../../hooks'
+import { ShowContextMenu } from '../ContextMenu'
+import { ShowDialog } from '../Dialog'
 
 const {
     MenubarRoot,
@@ -32,8 +34,18 @@ const MenubarDemo: React.FC<{
     style?: React.CSSProperties
 }> = ({ editor, onChangeBackground, onScreenShot, style }) => {
     const forceUpdate = useForceUpdate()
-    const [helper] = useState(() => new Helper(editor))
+    const helper = useMemo(() => new Helper(editor), [editor])
     const { current, changeLanguage, languagList } = useLanguageSelect()
+
+    useEffect(() => {
+        const show = (data: { mouseX: number; mouseY: number }) => {
+            ShowContextMenu({ ...data, editor })
+        }
+        editor?.ContextMenuEventManager.AddEventListener(show)
+        return () => {
+            editor?.ContextMenuEventManager.RemoveEventListener(show)
+        }
+    }, [editor])
 
     return (
         <Menubar.Root className={MenubarRoot} style={style}>
@@ -59,6 +71,14 @@ const MenubarDemo: React.FC<{
                             onSelect={() => editor.SaveScene()}
                         >
                             {i18n.t('Save Scene')}
+                        </Menubar.Item>
+                        <Menubar.Item
+                            className={MenubarItem}
+                            onSelect={() => {
+                                helper.GenerateSceneURL()
+                            }}
+                        >
+                            {i18n.t('Generate Scene URL')}
                         </Menubar.Item>
                         <Menubar.Separator className={MenubarSeparator} />
                         <Menubar.Item
@@ -90,6 +110,9 @@ const MenubarDemo: React.FC<{
                             }}
                         >
                             {i18n.t('Set Background Image')}
+                        </Menubar.Item>
+                        <Menubar.Item className={MenubarItem}>
+                            v{__APP_VERSION__}
                         </Menubar.Item>
                     </Menubar.Content>
                 </Menubar.Portal>
@@ -153,10 +176,18 @@ const MenubarDemo: React.FC<{
                         <Menubar.Item
                             className={classNames(MenubarItem, inset)}
                             onSelect={() => {
-                                editor.FixView()
+                                editor.LockView()
                             }}
                         >
-                            {i18n.t('Fix View')}
+                            {i18n.t('Lock View')}
+                        </Menubar.Item>
+                        <Menubar.Item
+                            className={classNames(MenubarItem, inset)}
+                            onSelect={() => {
+                                editor.UnlockView()
+                            }}
+                        >
+                            {i18n.t('Unlock View')}
                         </Menubar.Item>
                         <Menubar.Item
                             className={classNames(MenubarItem, inset)}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
 import { PinLeftIcon } from '@radix-ui/react-icons'
 import classes from './styles.module.css'
@@ -7,6 +7,8 @@ import { BodyEditor } from '../../editor'
 import useForceUpdate from '../../hooks/useFoceUpdate'
 import i18n from '../../i18n'
 import { BodyControlor } from '../../body'
+
+const { PopoverContent, IconButton, PopoverArrow, Input } = classes
 
 const Slider2: React.FC<{
     type: 'int' | 'float' | undefined
@@ -24,64 +26,92 @@ const Slider2: React.FC<{
     onChange,
     onValueCommit,
     forceUpdate,
-}) => (
-    <div
-        style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-        }}
-    >
+}) => {
+    const value = getValue()
+    const [inputValue, setInputValue] = useState(() =>
+        type == 'int' ? value.toString() : getValue().toFixed(2)
+    )
+
+    useEffect(() => {
+        setInputValue(type == 'int' ? value.toString() : getValue().toFixed(2))
+    }, [value])
+
+    return (
         <div
             style={{
-                minWidth: 60,
-                maxWidth: 120,
-                // width:"max-content",
-                overflow: 'hidden',
-                color: 'gray',
-                fontSize: '70%',
-                marginInlineEnd: 10,
-                // whiteSpace: 'nowrap',
-                textAlign: 'end',
-                textOverflow: 'ellipsis',
+                display: 'flex',
+                justifyContent: 'flex-end',
             }}
         >
-            {name}
+            <div
+                style={{
+                    minWidth: 60,
+                    maxWidth: 120,
+                    // width:"max-content",
+                    overflow: 'hidden',
+                    color: 'gray',
+                    fontSize: '70%',
+                    marginInlineEnd: 10,
+                    // whiteSpace: 'nowrap',
+                    textAlign: 'end',
+                    textOverflow: 'ellipsis',
+                }}
+            >
+                {name}
+            </div>
+            <Slider
+                key={name}
+                range={range}
+                value={getValue()}
+                onValueChange={(value: number) => {
+                    if (type == 'int') {
+                        onChange?.(Math.round(value))
+                    } else onChange?.(value)
+                    forceUpdate()
+                }}
+                onValueCommit={onValueCommit}
+                style={{
+                    width: 150,
+                }}
+            ></Slider>
+            <input
+                className={Input}
+                style={{
+                    marginInlineStart: 10,
+                    width: 60,
+                    height: 20,
+                    color: 'gray',
+                    fontSize: '70%',
+                }}
+                value={inputValue}
+                onChange={(event) => {
+                    const value = event.target.value
+
+                    setInputValue(value)
+                }}
+                onBlur={() => {
+                    try {
+                        let v = parseFloat(inputValue)
+                        if (isNaN(v)) throw 'Is NaN'
+                        v = Math.max(Math.min(v, range[1]), range[0])
+                        console.log(v)
+                        onChange?.(v)
+                    } catch (error) {
+                        console.log('invalid input')
+                        setInputValue(value.toString())
+                    }
+                }}
+            ></input>
         </div>
-        <Slider
-            key={name}
-            range={range}
-            value={getValue()}
-            onValueChange={(value: number) => {
-                if (type == 'int') {
-                    console.log('2312')
-                    onChange?.(Math.round(value))
-                } else onChange?.(value)
-                forceUpdate()
-            }}
-            onValueCommit={onValueCommit}
-            style={{
-                width: 150,
-            }}
-        ></Slider>
-        <div
-            style={{
-                marginInlineStart: 10,
-                width: 50,
-                color: 'gray',
-                fontSize: '50%',
-            }}
-        >
-            {type == 'int' ? getValue() : getValue().toFixed(2)}
-        </div>
-    </div>
-)
+    )
+}
 
 function GetCameraParamControlor(editor: BodyEditor) {
     const CameraParamsInit = {
-        OutputWidth: { type: 'int', range: [128, 5000], name: i18n.t('Width') },
+        OutputWidth: { type: 'int', range: [128, 3000], name: i18n.t('Width') },
         OutputHeight: {
             type: 'int',
-            range: [128, 5000],
+            range: [128, 3000],
             name: i18n.t('Height'),
         },
         CameraNear: { range: [0.1, 2000], name: i18n.t('Camera Near') },
@@ -228,8 +258,6 @@ function GetBodyParamControlor(editor: BodyEditor) {
     })
 }
 
-const { PopoverContent, IconButton, PopoverArrow } = classes
-
 const ControlorPopover: React.FC<{
     editor: BodyEditor
     style?: React.CSSProperties
@@ -237,12 +265,12 @@ const ControlorPopover: React.FC<{
     const forceUpdate = useForceUpdate()
     const [open, setOpen] = useState(true)
 
-    const [cameraParamControlor] = useState(() => {
+    const cameraParamControlor = useMemo(() => {
         return GetCameraParamControlor(editor)
-    })
-    const [bodyParamControlor] = useState(() => {
+    }, [editor])
+    const bodyParamControlor = useMemo(() => {
         return GetBodyParamControlor(editor)
-    })
+    }, [editor])
 
     const [bodySelected, setBodySelected] = useState(false)
     useEffect(() => {
@@ -252,11 +280,14 @@ const ControlorPopover: React.FC<{
         const unselect = () => {
             setBodySelected(false)
         }
-        editor.RegisterEvent({ select, unselect })
+        editor.SelectEventManager.AddEventListener(select)
+        editor.UnselectEventManager.AddEventListener(unselect)
+
         return () => {
-            editor.UnregisterEvent({ select, unselect })
+            editor.SelectEventManager.RemoveEventListener(select)
+            editor.UnselectEventManager.RemoveEventListener(unselect)
         }
-    }, [])
+    }, [editor])
     return (
         <Popover.Root open={open}>
             <Popover.Trigger asChild>

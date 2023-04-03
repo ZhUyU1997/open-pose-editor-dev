@@ -2,7 +2,7 @@ import { getImage } from '../../utils/image'
 import { uploadImage } from '../../utils/transfer'
 import { DetectPosefromImage } from '../../utils/detect'
 
-import { GetRandomPose, LoadPosesLibrary } from '../../body'
+import { BodyControlor, GetRandomPose, LoadPosesLibrary } from '../../body'
 
 import { GetLoading } from '../../components/Loading'
 import { BodyEditor } from '../../editor'
@@ -39,6 +39,9 @@ export class Helper {
             loading.hide()
 
             if (result) {
+                if (!result.poseWorldLandmarks)
+                    throw new Error(JSON.stringify(result))
+
                 const positions: [number, number, number][] =
                     result.poseWorldLandmarks.map(({ x, y, z }) => [
                         x * 100,
@@ -63,6 +66,39 @@ export class Helper {
             return null
         }
     }
+
+    async CopyKeypointToClipboard() {
+        const body = await this.editor.GetBodyToSetPose()
+        if (!body) {
+            ShowToast({ title: i18n.t('Please select a skeleton!!') })
+            return
+        }
+        try {
+            const data = new BodyControlor(body).Get18keyPointsData()
+            await navigator.clipboard.writeText(JSON.stringify(data, null, 4))
+            ShowToast({ title: i18n.t('Copied to Clipboard') })
+        } catch (error) {
+            Oops(error)
+            console.error(error)
+            return null
+        }
+    }
+
+    async GenerateSceneURL() {
+        try {
+            const d = encodeURIComponent(
+                JSON.stringify(this.editor.GetSceneData())
+            )
+            const url_base = location.href.replace(/#$/, '')
+            const url = `${url_base}#${d}`
+            await navigator.clipboard.writeText(url)
+            ShowToast({ title: i18n.t('Copied to Clipboard') })
+        } catch (error) {
+            Oops(error)
+            console.error(error)
+        }
+    }
+
     async SetRandomPose() {
         const body = await this.editor.GetBodyToSetPose()
         if (!body) {

@@ -310,12 +310,12 @@ function Torso(x: number, y: number, z: number) {
 
     const right_hip = Joint('right_hip')
 
-    right_hip.translateX(-width / 2 + 10)
+    right_hip.translateX(-width / 2 + 7)
     right_hip.translateY(-height)
 
     const left_hip = Joint('left_hip')
 
-    left_hip.translateX(width / 2 - 10)
+    left_hip.translateX(width / 2 - 7)
     left_hip.translateY(-height)
 
     right_hip_inner.add(right_hip)
@@ -566,6 +566,14 @@ export async function LoadHand(
         o.add(point)
     })
 
+    const mask = new THREE.Mesh(
+        new THREE.CylinderGeometry(1, 1, 0.4, 32),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+    )
+    mask.name = 'hand_mask'
+    mask.visible = false
+    mask.rotateZ(Math.PI / 2)
+    mesh.skeleton.bones[0].add(mask)
     return fbx
 }
 
@@ -598,6 +606,13 @@ export async function LoadFoot(
         o.add(point)
     })
 
+    const mask = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.32, 0.32, 0.1, 32),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+    )
+    mask.name = 'foot_mask'
+    mask.visible = false
+    mesh.skeleton.bones[0].add(mask)
     return fbx
 }
 
@@ -691,6 +706,10 @@ export function IsHand(name: string) {
 
 export function IsFoot(name: string) {
     return ['left_foot', 'right_foot'].includes(name)
+}
+
+export function IsMask(name: string) {
+    return ['foot_mask', 'hand_mask'].includes(name)
 }
 
 export function IsSkeleton(name: string) {
@@ -1245,6 +1264,18 @@ export class BodyControlor {
             if (o.name in this.part) {
                 const name = o.name as ControlPartName
                 this.UpdateLink(name, thickness)
+            }
+        })
+    }
+
+    Get18keyPointsData(): Array<[number, number, number]> {
+        return coco_body_keypoints.map((name) => {
+            if (name in this.part) {
+                return this.getWorldPosition(
+                    this.part[name as ControlPartName]
+                ).toArray()
+            } else {
+                return [0, 0, 0]
             }
         })
     }
